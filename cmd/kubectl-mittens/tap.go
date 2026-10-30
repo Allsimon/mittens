@@ -312,7 +312,14 @@ func NewTapCommand(client kubernetes.Interface, _ *rest.Config, viper *viper.Vip
 		}
 
 		// Spawn kubectl exec to attach to mitmproxy tmux session
-		execCmd := exec.CommandContext(cmd.Context(), "kubectl", "exec", "-it", pod.Name, "-n", namespace, "-c", "mittens", "--", "tmux", "attach-session", "-t", "mitmproxy")
+		execArgs := []string{"exec", "-it", pod.Name, "-n", namespace, "-c", "mittens"}
+		for _, flag := range []string{"kubeconfig", "context", "cluster", "user"} {
+			if value := viper.GetString(flag); value != "" {
+				execArgs = append(execArgs, "--"+flag, value)
+			}
+		}
+		execArgs = append(execArgs, "--", "tmux", "attach-session", "-t", "mitmproxy")
+		execCmd := exec.CommandContext(cmd.Context(), "kubectl", execArgs...)
 		execCmd.Stdin = os.Stdin
 		execCmd.Stdout = os.Stdout
 		execCmd.Stderr = os.Stderr
